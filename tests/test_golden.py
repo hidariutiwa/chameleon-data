@@ -4,34 +4,20 @@ import pandas as pd
 import pytest
 from faker import Faker
 
-from chameleon_data.main import (
-    NAME_TYPES,
-    create_example,
-    mask_column,
-    mask_name_columns,
-    read_table,
-    sample_fake_values,
-    write_table,
-)
+from chameleon_data.fakers import sample_fake_values
+from chameleon_data.main import create_example
+from chameleon_data.masking import apply_masks
+from chameleon_data.table_io import read_table, write_table
 
 EXAMPLE_CSV = Path(__file__).parent / "golden" / "example.csv"
 
 
 def run_masks(df: pd.DataFrame, fake_types: dict[str, str], seed: int) -> pd.DataFrame:
-    # same order as main(): samples before seeding, name columns first, then the rest
+    # same order as main(): samples before seeding
     fake = Faker("ja_JP")
     sample_fake_values(fake)
     Faker.seed(seed)
-    name_columns = [c for c, t in fake_types.items() if t in NAME_TYPES]
-    if len(name_columns) > 1:
-        df[name_columns] = mask_name_columns(df, fake_types, fake)
-    else:
-        name_columns = []
-    for column, fake_type in fake_types.items():
-        if column in name_columns:
-            continue
-        df[column] = mask_column(df[column], fake_type, fake)
-    return df
+    return apply_masks(df, fake_types, fake)
 
 
 def test_create_example(tmp_path, monkeypatch, golden):

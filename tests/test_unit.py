@@ -2,17 +2,10 @@ import pandas as pd
 import pytest
 from faker import Faker
 
-from chameleon_data.main import (
-    FAKE_GROUPS,
-    NAME_TYPES,
-    PROMPTS,
-    get_prompts,
-    mask_column,
-    mask_name_columns,
-    read_table,
-    sample_fake_values,
-    write_table,
-)
+from chameleon_data.fakers import FAKE_GROUPS, NAME_TYPES, sample_fake_values
+from chameleon_data.main import PROMPTS, get_prompts
+from chameleon_data.masking import apply_masks, mask_column, mask_name_columns
+from chameleon_data.table_io import read_table, write_table
 
 
 def test_mask_column_keeps_relations_and_nan():
@@ -57,6 +50,25 @@ def test_table_round_trip_keeps_leading_zeros(tmp_path, suffix):
     path = tmp_path / f"t{suffix}"
     write_table(df, path)
     assert read_table(path).equals(df)
+
+
+def test_table_rejects_unknown_suffix(tmp_path):
+    with pytest.raises(ValueError, match=r"\.txt is not allowed"):
+        read_table(tmp_path / "t.txt")
+    with pytest.raises(ValueError, match=r"\.txt is not allowed"):
+        write_table(pd.DataFrame(), tmp_path / "t.txt")
+
+
+def test_apply_masks_reports_every_row_per_column():
+    df = pd.DataFrame(
+        {"first": ["太郎", "花子"], "last": ["山田", "鈴木"], "city": ["a", None]}
+    )
+    fake_types = {"first": "first_name", "last": "last_name", "city": "city"}
+    advanced: list[str] = []
+    masked = apply_masks(df, fake_types, Faker("ja_JP"), advanced.append)
+    assert sorted(advanced) == ["city", "city", "first", "first", "last", "last"]
+    assert df.loc[0, "first"] == "太郎"  # input is not mutated
+    assert pd.isna(masked.loc[1, "city"])
 
 
 def test_get_prompts_falls_back_to_english():
