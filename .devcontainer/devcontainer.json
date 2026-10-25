@@ -1,0 +1,26 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/python
+{
+	"name": "Python 3",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"image": "mcr.microsoft.com/devcontainers/python:3-3.14-trixie",
+	"features": {
+		"ghcr.io/devcontainers/features/github-cli:1": {}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"enkia.tokyo-night",
+				"esbenp.prettier-vscode",
+				"ms-python.black-formatter",
+				"dbaeumer.vscode-eslint",
+				"inferrinizzard.prettier-sql-vscode",
+				"jeff-hykin.better-docker-compose",
+				"vivaxy.vscode-conventional-commits",
+				"bradlc.vscode-tailwindcss",
+				"prisma.prisma",
+				"tonybaloney.vscode-pets"
+			]
+		}
+	}
+}

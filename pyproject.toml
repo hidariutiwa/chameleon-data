@@ -1,0 +1,25 @@
+[project]
+name = "chameleon-cli"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "hidariutiwa", email = "hidariutiwa22@gmaii.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "faker>=40.43.0",
+    "openpyxl>=3.1.5",
+    "pandas>=3.1.0",
+    "pydantic>=2.14.1",
+    "questionary>=2.1.1",
+    "rich>=15.0.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.14,<0.12.0"]
+build-backend = "uv_build"
+
+[project.scripts]
+chameleon = "chameleon_cli.main:main"
+example = "chameleon_cli.main:create_exqmple"
