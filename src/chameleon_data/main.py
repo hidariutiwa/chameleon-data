@@ -50,6 +50,34 @@ def fake_street(fake: Faker) -> str:
     return f"{fake.town()}{fake.chome()}{fake.ban()}{fake.gou()}"
 
 
+# name types generated together per row so they describe the same person
+NAME_TYPES = {
+    "full_name",
+    "first_name",
+    "last_name",
+    "full_name_kana",
+    "first_name_kana",
+    "last_name_kana",
+}
+
+
+def fake_person(fake: Faker) -> dict[str, str]:
+    # *_name_pair (kanji, kana, romanized) exist only in the ja_JP provider
+    if not hasattr(fake, "last_name_pair"):
+        last, first = fake.last_name(), fake.first_name()
+        return {"full_name": f"{last} {first}", "first_name": first, "last_name": last}
+    last, last_kana, _ = fake.last_name_pair()
+    first, first_kana, _ = fake.first_name_pair()
+    return {
+        "full_name": f"{last} {first}",
+        "first_name": first,
+        "last_name": last,
+        "full_name_kana": f"{last_kana} {first_kana}",
+        "first_name_kana": first_kana,
+        "last_name_kana": last_kana,
+    }
+
+
 # generators that need a provider missing in the locale raise AttributeError
 # and are hidden from the choices by build_type_choices()
 FAKE_GROUPS: dict[str, dict[str, Callable[[Faker], str]]] = {
@@ -210,6 +238,31 @@ def mask_column(
     return series.map(replace)
 
 
+def mask_name_columns(
+    df: pd.DataFrame,
+    fake_types: dict[str, str],
+    fake: Faker,
+    on_row: Callable[[str], None] | None = None,
+) -> pd.DataFrame:
+    # one fake person per row; same original names -> same person
+    columns = [column for column, t in fake_types.items() if t in NAME_TYPES]
+    persons: dict[tuple, dict[str, str]] = {}
+    masked = df[columns].copy()
+
+    for index, row in df[columns].iterrows():
+        key = tuple(None if pd.isna(v) else v for v in row)
+        if any(v is not None for v in key):
+            if key not in persons:
+                persons[key] = fake_person(fake)
+            for column, value in zip(columns, key):
+                if value is not None:
+                    masked.at[index, column] = persons[key][fake_types[column]]
+        if on_row is not None:
+            for column in columns:
+                on_row(column)
+    return masked
+
+
 def exit_with_error(message: str) -> None:
     console.print(
         Panel.fit(message, title="✗ error", title_align="left", border_style="red")
@@ -362,7 +415,20 @@ def main() -> None:
         tasks = {
             column: progress.add_task(column, total=len(df)) for column in fake_types
         }
+        name_columns = [c for c, t in fake_types.items() if t in NAME_TYPES]
+        if len(name_columns) > 1:
+            masked = mask_name_columns(
+                df,
+                fake_types,
+                fake,
+                on_row=lambda column: progress.advance(tasks[column]),
+            )
+            df[name_columns] = masked
+        else:
+            name_columns = []
         for column, fake_type in fake_types.items():
+            if column in name_columns:
+                continue
             task = tasks[column]
             df[column] = mask_column(
                 df[column], fake_type, fake, on_row=lambda: progress.advance(task)
