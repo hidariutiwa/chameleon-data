@@ -44,16 +44,64 @@ def fake_address(fake: Faker) -> str:
     return f"{fake.prefecture()}{fake.city()}{fake.chome()}{fake.gou()}{fake.ban()}{fake.building_name()}{fake.building_number()}"
 
 
-FAKE_GENERATORS: dict[str, Callable[[Faker], str]] = {
-    "full_name": lambda fake: f"{fake.last_name()} {fake.first_name()}",
-    "first_name": lambda fake: fake.first_name(),
-    "last_name": lambda fake: fake.last_name(),
-    "full_address": fake_address,
-    "zipcode": lambda fake: fake.zipcode(),
-    "phone_number": lambda fake: fake.phone_number(),
+def fake_street(fake: Faker) -> str:
+    if not hasattr(fake, "chome"):
+        return fake.street_address()
+    return f"{fake.town()}{fake.chome()}{fake.ban()}{fake.gou()}"
+
+
+# generators that need a provider missing in the locale raise AttributeError
+# and are hidden from the choices by build_type_choices()
+FAKE_GROUPS: dict[str, dict[str, Callable[[Faker], str]]] = {
+    "person": {
+        "full_name": lambda fake: f"{fake.last_name()} {fake.first_name()}",
+        "first_name": lambda fake: fake.first_name(),
+        "last_name": lambda fake: fake.last_name(),
+        "full_name_kana": lambda fake: fake.kana_name(),
+        "last_name_kana": lambda fake: fake.last_kana_name(),
+        "first_name_kana": lambda fake: fake.first_kana_name(),
+        "email": lambda fake: fake.email(),
+        "user_name": lambda fake: fake.user_name(),
+        "date_of_birth": lambda fake: fake.date_of_birth(
+            minimum_age=18, maximum_age=90
+        ).isoformat(),
+        "age": lambda fake: str(fake.random_int(18, 90)),
+        "phone_number": lambda fake: fake.phone_number(),
+    },
+    "address": {
+        "full_address": fake_address,
+        "zipcode": lambda fake: fake.zipcode(),
+        "prefecture": lambda fake: fake.administrative_unit(),
+        "city": lambda fake: fake.city(),
+        "street": fake_street,
+        "building": lambda fake: f"{fake.building_name()}{fake.building_number()}",
+    },
+    "business": {
+        "company": lambda fake: fake.company(),
+        "job": lambda fake: fake.job(),
+        "url": lambda fake: fake.url(),
+        "domain": lambda fake: fake.domain_name(),
+        "ipv4": lambda fake: fake.ipv4(),
+        "ipv4_private": lambda fake: fake.ipv4_private(),
+    },
+    "finance / id": {
+        "credit_card_number": lambda fake: fake.credit_card_number(),
+        "credit_card_expire": lambda fake: fake.credit_card_expire(),
+        "credit_card_security_code": lambda fake: fake.credit_card_security_code(),
+        "bank_account": lambda fake: fake.bban(),
+        "iban": lambda fake: fake.iban(),
+        "uuid": lambda fake: fake.uuid4(),
+        "passport_number": lambda fake: fake.passport_number(),
+        "number": lambda fake: str(fake.random_int(0, 99999)),
+        "date": lambda fake: fake.date(),
+    },
 }
 
-FAKE_TYPES = ["masking", *FAKE_GENERATORS]
+FAKE_GENERATORS: dict[str, Callable[[Faker], str]] = {
+    name: generator
+    for group in FAKE_GROUPS.values()
+    for name, generator in group.items()
+}
 
 # questionary prompt texts, keyed by the language part of the Faker locale
 PROMPTS: dict[str, dict[str, str]] = {
@@ -61,19 +109,19 @@ PROMPTS: dict[str, dict[str, str]] = {
         "select_columns": "マスクする列を選択してください",
         "select_columns_hint": "(↑↓で移動、スペースで選択、aで全選択、iで反転、Enterで決定)",
         "select_type": "{column} の置き換え方法を選択してください",
-        "select_type_hint": "(↑↓で移動、Enterで決定)",
+        "select_type_hint": "(↑↓で移動、文字入力で絞り込み、Enterで決定)",
     },
     "en": {
         "select_columns": "select masking columns",
         "select_columns_hint": "(↑↓ to move, <space> to select, <a> to toggle, <i> to invert)",
         "select_type": "type of {column}",
-        "select_type_hint": "(↑↓ to move, <enter> to choose)",
+        "select_type_hint": "(↑↓ to move, type to filter, <enter> to choose)",
     },
     "zh": {
         "select_columns": "请选择要脱敏的列",
         "select_columns_hint": "(↑↓ 移动，空格 选择，a 全选，i 反选，回车 确认)",
         "select_type": "请选择 {column} 的替换方式",
-        "select_type_hint": "(↑↓ 移动，回车 确认)",
+        "select_type_hint": "(↑↓ 移动，输入文字 筛选，回车 确认)",
     },
 }
 
@@ -81,6 +129,38 @@ PROMPTS: dict[str, dict[str, str]] = {
 def get_prompts(language: str) -> dict[str, str]:
     # ja_JP -> ja, zh_TW -> zh; unsupported languages fall back to English
     return PROMPTS.get(language.split("_")[0].lower(), PROMPTS["en"])
+
+
+def sample_fake_values(fake: Faker) -> dict[str, dict[str, str]]:
+    # one sample per generator, grouped like FAKE_GROUPS; unsupported ones are dropped
+    samples: dict[str, dict[str, str]] = {}
+    for group, generators in FAKE_GROUPS.items():
+        for name, generator in generators.items():
+            try:
+                samples.setdefault(group, {})[name] = generator(fake)
+            except AttributeError:
+                continue
+    return samples
+
+
+def build_type_choices(
+    samples: dict[str, dict[str, str]], series: pd.Series
+) -> list[questionary.Choice | questionary.Separator]:
+    # plain str titles: questionary's search filter calls title.lower()
+    width = max(len(name) for name in FAKE_GENERATORS) + 2
+
+    def choice(name: str, sample: str) -> questionary.Choice:
+        return questionary.Choice(f"{name:<{width}}{sample}", name)
+
+    first = series.dropna()
+    masked = "*" * len(first.iloc[0]) if len(first) else "****"
+    choices: list[questionary.Choice | questionary.Separator] = [
+        choice("masking", masked)
+    ]
+    for group, group_samples in samples.items():
+        choices.append(questionary.Separator(f"── {group} ──"))
+        choices.extend(choice(name, sample) for name, sample in group_samples.items())
+    return choices
 
 
 def read_table(path: Path) -> pd.DataFrame:
@@ -249,19 +329,24 @@ def main() -> None:
     if not mask_columns:
         exit_with_error("no columns selected.")
 
+    # samples consume random state, but seeding below resets it
+    fake = Faker(args.language)
+    samples = sample_fake_values(fake)
+
     fake_types = {}
     for column in mask_columns:
         fake_type = questionary.select(
             prompts["select_type"].format(column=column),
-            FAKE_TYPES,
+            build_type_choices(samples, df[column]),
             instruction=prompts["select_type_hint"],
+            use_search_filter=True,
+            use_jk_keys=False,
         ).ask()
         if fake_type is None:
             exit_cancelled()
         fake_types[column] = fake_type
     print_mask_plan(fake_types)
 
-    fake = Faker(args.language)
     if args.seed is not None:
         Faker.seed(args.seed)
 

@@ -32,7 +32,8 @@ All logic lives in `src/chameleon_data/main.py` (src layout, `uv_build` backend)
 
 Design points:
 - Files are read with `dtype=str` so zip codes and phone numbers keep leading zeros; output is written with `index=False` in the same format as the suffix.
-- Fake types are `"masking"` (every character → `*`, same length) plus the keys of `FAKE_GENERATORS`; add a new type there.
+- Fake types are `"masking"` (every character → `*`, same length) plus the keys of `FAKE_GROUPS` (category → name → generator, flattened into `FAKE_GENERATORS`); add a new type to its category there.
+- The type prompt shows one sample per type: `sample_fake_values()` calls each generator once before seeding (so seeded output is unaffected) and drops generators raising `AttributeError` (provider missing in the locale). `build_type_choices()` uses plain-str titles because questionary's search filter calls `title.lower()`.
 - `mask_column()` caches per column so identical original values get identical replacements; NaN stays NaN.
 - `fake_address()` uses ja_JP-only providers (`prefecture`, `chome`, …) and falls back to `fake.address()` for other locales. `create_example()` shares it, and with seed 223 it must keep producing the same `example.csv`.
 - questionary prompt texts live in `PROMPTS` (ja/en/zh), picked by `get_prompts()` from the language part of `-l`; other languages fall back to English. Add a language by adding a key there.
