@@ -1,4 +1,4 @@
-# chameleon-cli
+# chameleon-data
 
 CSV / TSV / XLSX ファイルの列を選んで、[Faker](https://faker.readthedocs.io/) で生成したダミーデータに置き換える対話型 CLI です。結果は元と同じ形式で保存されます。
 
@@ -8,29 +8,29 @@ Python 3.11 以上が必要です。
 
 ```bash
 # CLI ツールとしてインストール (おすすめ)
-uv tool install chameleon-cli
+uv tool install chameleon-data
 
 # インストールせずに 1 回だけ実行
-uvx --from chameleon-cli chameleon -f data.csv
+uvx --from chameleon-data chameleon -f data.csv
 
 # 他プロジェクトの依存として追加
-uv add chameleon-cli
-pip install chameleon-cli
+uv add chameleon-data
+pip install chameleon-data
 ```
 
 最新の開発版は GitHub から直接インストールできます。
 
 ```bash
-uv tool install git+https://github.com/hidariutiwa/chameleon-cli
+uv tool install git+https://github.com/hidariutiwa/chameleon-data
 ```
 
-GitHub 版で特定のバージョンに固定したい場合は `git+https://github.com/hidariutiwa/chameleon-cli@<tag or commit>` のように指定します。
+GitHub 版で特定のバージョンに固定したい場合は `git+https://github.com/hidariutiwa/chameleon-data@<tag or commit>` のように指定します。
 
 アップデート / アンインストール:
 
 ```bash
-uv tool upgrade chameleon-cli
-uv tool uninstall chameleon-cli
+uv tool upgrade chameleon-data
+uv tool uninstall chameleon-data
 ```
 
 ## 使い方
