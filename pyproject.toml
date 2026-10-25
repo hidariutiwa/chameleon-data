@@ -1,6 +1,6 @@
 [project]
 name = "chameleon-data"
-version = "0.1.0"
+version = "0.1.1"
 description = "Interactive CLI to mask columns of CSV/TSV/XLSX files with Faker-generated fake data"
 readme = "README.md"
 authors = [
