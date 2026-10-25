@@ -71,15 +71,17 @@ chameleon -f data.tsv -l en_US -s 42  # specify locale and seed
 | `-s`, `--seed` | Random seed. Set it to get the same result every time |
 | `-v`, `--version` | Show the version |
 
-When run, you pick the columns to mask with a checkbox prompt, then choose a replacement type for each column.
+When run, you pick the columns to mask with a checkbox prompt, then choose a replacement type for each column. Each type is shown with a sample value, and you can type to filter the list.
 
-| Type | Replacement |
+| Group | Types |
 | --- | --- |
-| `masking` | Every character becomes `*` (length is kept) |
-| `full_name` / `first_name` / `last_name` | Person name |
-| `full_address` | Address |
-| `zipcode` | Postal code |
-| `phone_number` | Phone number |
+| — | `masking`: every character becomes `*` (length is kept) |
+| person | `full_name` / `first_name` / `last_name`, `full_name_kana` / `last_name_kana` / `first_name_kana`, `email`, `user_name`, `date_of_birth`, `age`, `phone_number` |
+| address | `full_address`, `zipcode`, `prefecture`, `city`, `street`, `building` |
+| business | `company`, `job`, `url`, `domain`, `ipv4`, `ipv4_private` |
+| finance / id | `credit_card_number`, `credit_card_expire`, `credit_card_security_code`, `bank_account`, `iban`, `uuid`, `passport_number`, `number`, `date` |
+
+Types the locale does not support (e.g. kana names and `building` outside `ja_JP`) are hidden from the list.
 
 Identical values are replaced with identical fake values, so relationships between rows are preserved. Empty cells stay empty.
 
