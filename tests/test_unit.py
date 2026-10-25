@@ -1,0 +1,88 @@
+import pandas as pd
+import pytest
+from faker import Faker
+
+from chameleon_data.fakers import FAKE_GROUPS, NAME_TYPES, sample_fake_values
+from chameleon_data.prompts import PROMPTS, get_prompts
+from chameleon_data.masking import apply_masks, mask_column, mask_name_columns
+from chameleon_data.table_io import read_table, write_table
+
+
+def test_mask_column_keeps_relations_and_nan():
+    series = pd.Series(["a", "b", "a", None], dtype=object)
+    masked = mask_column(series, "city", Faker("ja_JP"))
+    assert masked[0] == masked[2]
+    assert masked[0] != "a"
+    assert pd.isna(masked[3])
+
+
+def test_mask_column_masking_keeps_length():
+    masked = mask_column(pd.Series(["abc", "de"]), "masking", Faker("ja_JP"))
+    assert list(masked) == ["***", "**"]
+
+
+def test_mask_name_columns_describes_one_person():
+    df = pd.DataFrame(
+        {
+            "full": ["山田 太郎", "鈴木 花子", "山田 太郎"],
+            "first": ["太郎", "花子", "太郎"],
+            "last": ["山田", "鈴木", "山田"],
+            "first_kana": ["タロウ", "ハナコ", "タロウ"],
+            "last_kana": ["ヤマダ", "スズキ", "ヤマダ"],
+        }
+    )
+    fake_types = {
+        "full": "full_name",
+        "first": "first_name",
+        "last": "last_name",
+        "first_kana": "first_name_kana",
+        "last_kana": "last_name_kana",
+    }
+    masked = mask_name_columns(df, fake_types, Faker("ja_JP"))
+    for _, row in masked.iterrows():
+        assert row["full"] == f"{row['last']} {row['first']}"
+    assert masked.iloc[0].equals(masked.iloc[2])
+
+
+@pytest.mark.parametrize("suffix", [".csv", ".tsv", ".xlsx"])
+def test_table_round_trip_keeps_leading_zeros(tmp_path, suffix):
+    df = pd.DataFrame({"zipcode": ["001-0001", "0123"], "phone": ["090", None]})
+    path = tmp_path / f"t{suffix}"
+    write_table(df, path)
+    assert read_table(path).equals(df)
+
+
+def test_table_rejects_unknown_suffix(tmp_path):
+    with pytest.raises(ValueError, match=r"\.txt is not allowed"):
+        read_table(tmp_path / "t.txt")
+    with pytest.raises(ValueError, match=r"\.txt is not allowed"):
+        write_table(pd.DataFrame(), tmp_path / "t.txt")
+
+
+def test_apply_masks_reports_every_row_per_column():
+    df = pd.DataFrame(
+        {"first": ["太郎", "花子"], "last": ["山田", "鈴木"], "city": ["a", None]}
+    )
+    fake_types = {"first": "first_name", "last": "last_name", "city": "city"}
+    advanced: list[str] = []
+    masked = apply_masks(df, fake_types, Faker("ja_JP"), advanced.append)
+    assert sorted(advanced) == ["city", "city", "first", "first", "last", "last"]
+    assert df.loc[0, "first"] == "太郎"  # input is not mutated
+    assert pd.isna(masked.loc[1, "city"])
+
+
+def test_get_prompts_falls_back_to_english():
+    assert get_prompts("ja_JP") is PROMPTS["ja"]
+    assert get_prompts("zh_TW") is PROMPTS["zh"]
+    assert get_prompts("fr_FR") is PROMPTS["en"]
+
+
+def test_name_types_are_person_generators():
+    assert NAME_TYPES <= FAKE_GROUPS["person"].keys()
+
+
+def test_sample_fake_values_drops_unsupported():
+    ja = sample_fake_values(Faker("ja_JP"))
+    en = sample_fake_values(Faker("en_US"))
+    assert "full_name_kana" in ja["person"]
+    assert "full_name_kana" not in en["person"]

@@ -17,26 +17,40 @@ uv run chameleon -f example/example.csv         # run the CLI (interactive promp
 uv run chameleon -f data.csv -l en_US -s 42     # locale and seed options
 uv run chameleon -f data.xlsx -o out.csv        # output path (default: <name>_masked.<suffix>)
 uv build                                        # build wheel/sdist into dist/
+uv run pytest                                   # run tests (also run by .github/workflows/test.yml on 3.11 and 3.14)
+CHAMELEON_UPDATE_GOLDEN=1 uv run pytest         # rewrite tests/golden/ (only when an output change is intended)
 ```
 
 Published to PyPI as `chameleon-data` (`uv tool install chameleon-data`). Releases: bump `version` in `pyproject.toml` (`uv version --bump patch`), then push a `v<version>` tag; `.github/workflows/publish.yml` builds and runs `uv publish` via Trusted Publishing (environment `pypi`). Install instructions for users live in `README.md`.
 
-There is no test suite, linter, or type checker configured yet. Python files are formatted with Black (VS Code format-on-save via `ms-python.black-formatter`).
+Tests (pytest, `tests/`) pin the current behavior: `test_golden.py` compares seeded output with `tests/golden/` (`example.csv` from seed 223, masked files from seed 42), `test_cli.py` runs `cli.main()` end to end with the questionary prompts monkeypatched, and `test_unit.py` covers the building blocks. No linter or type checker is configured yet. Python files are formatted with Black (VS Code format-on-save via `ms-python.black-formatter`).
 
 ## Architecture
 
-All logic lives in `src/chameleon_data/main.py` (src layout, `uv_build` backend). Console scripts in `pyproject.toml`:
+src layout (`uv_build` backend), package `src/chameleon_data/`:
 
-- `chameleon` → `main()`: argparse (`-f`, `-o`, `-l`, `-s`, `-v` from package metadata) → `read_table()` → `questionary.checkbox` to choose columns → `questionary.select` per column to choose a fake type → `mask_column()` per column → `write_table()`.
-- `chameleon-example` → `create_example()`: builds `ExampleData` pydantic models with Faker and writes `example/example.csv` relative to the current working directory.
+| module | role |
+|---|---|
+| `fakers.py` | `MASKING`, `FAKE_GROUPS` / `FAKE_GENERATORS`, `NAME_TYPES`, `fake_person()` / `fake_address()` / `fake_street()`, `sample_fake_values()` |
+| `table_io.py` | `TABLE_FORMATS` (suffix → reader, writer), `ALLOWED_SUFFIXES`, `read_table()` / `write_table()` |
+| `masking.py` | `mask_column()`, `mask_name_columns()`, `apply_masks()` (no UI dependency) |
+| `prompts.py` | `PROMPTS` / `get_prompts()`, `build_type_choices()`, `ask_columns()` / `ask_fake_types()` (questionary) |
+| `ui.py` | module-level rich `console`, `print_*()`, `make_progress()`, `exit_with_error()` / `exit_cancelled()` |
+| `cli.py` | `parse_args()`, `resolve_paths()`, `main()` |
+| `example.py` | `ExampleData`, `create_example()` |
+
+Console scripts in `pyproject.toml`:
+
+- `chameleon` → `cli.main()`: argparse (`-f`, `-o`, `-l`, `-s`, `-v` from package metadata) → `read_table()` → `ask_columns()` → `ask_fake_types()` → `apply_masks()` → `write_table()`.
+- `chameleon-example` → `example.create_example()`: builds `ExampleData` pydantic models with Faker and writes `example/example.csv` relative to the current working directory.
 
 Design points:
-- Files are read with `dtype=str` so zip codes and phone numbers keep leading zeros; output is written with `index=False` in the same format as the suffix.
-- Fake types are `"masking"` (every character → `*`, same length) plus the keys of `FAKE_GROUPS` (category → name → generator, flattened into `FAKE_GENERATORS`); add a new type to its category there.
+- Files are read with `dtype=str` so zip codes and phone numbers keep leading zeros; output is written with `index=False` in the same format as the suffix. Add a format by adding a suffix to `TABLE_FORMATS`.
+- Fake types are `MASKING` (`"masking"`: every character → `*`, same length) plus the keys of `FAKE_GROUPS` (category → name → generator, flattened into `FAKE_GENERATORS`); add a new type to its category there.
 - The type prompt shows one sample per type: `sample_fake_values()` calls each generator once before seeding (so seeded output is unaffected) and drops generators raising `AttributeError` (provider missing in the locale). `build_type_choices()` uses plain-str titles because questionary's search filter calls `title.lower()`.
 - `mask_column()` caches per column so identical original values get identical replacements; NaN stays NaN.
-- When two or more columns use name types (`NAME_TYPES`: full/first/last name and their kana), `mask_name_columns()` replaces them together: one `fake_person()` per row (cached by the row's original names), so full_name = last + first and kana match the kanji (ja_JP `*_name_pair`).
+- `apply_masks()` returns a masked copy and reports progress through `on_advance(column)` once per row and column. When two or more columns use name types (`NAME_TYPES`: full/first/last name and their kana), it lets `mask_name_columns()` replace them together: one `fake_person()` per row (cached by the row's original names), so full_name = last + first and kana match the kanji (ja_JP `*_name_pair`).
 - `fake_address()` uses ja_JP-only providers (`prefecture`, `chome`, …) and falls back to `fake.address()` for other locales. `create_example()` shares it, and with seed 223 it must keep producing the same `example.csv`.
 - questionary prompt texts live in `PROMPTS` (ja/en/zh), picked by `get_prompts()` from the language part of `-l`; other languages fall back to English. Add a language by adding a key there.
-- Terminal output goes through the module-level rich `console`: `print_header()` panel → input info → mask plan table → `Progress` bar per column (fed by `mask_column(..., on_row=...)`) → `print_result()` panel. Errors use `exit_with_error()` (red panel); questionary returning `None` (Ctrl-C) goes through `exit_cancelled()`.
-- `__init__.py` contains only the uv template `hello()` function.
+- Terminal output goes through `ui.console`: `print_header()` panel → input info → mask plan table → `make_progress()` bar per column (fed by `apply_masks(..., on_advance=...)`) → `print_result()` panel. Errors use `exit_with_error()` (red panel); questionary returning `None` (Ctrl-C) goes through `exit_cancelled()`. Both are `NoReturn`.
+- `__init__.py` is empty.
