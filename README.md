@@ -8,17 +8,23 @@ Python 3.11 以上が必要です。
 
 ```bash
 # CLI ツールとしてインストール (おすすめ)
-uv tool install git+https://github.com/hidariutiwa/chameleon-cli
+uv tool install chameleon-cli
 
 # インストールせずに 1 回だけ実行
-uvx --from git+https://github.com/hidariutiwa/chameleon-cli chameleon -f data.csv
+uvx --from chameleon-cli chameleon -f data.csv
 
 # 他プロジェクトの依存として追加
-uv add git+https://github.com/hidariutiwa/chameleon-cli
-pip install git+https://github.com/hidariutiwa/chameleon-cli
+uv add chameleon-cli
+pip install chameleon-cli
 ```
 
-特定のバージョンを固定したい場合は `git+https://github.com/hidariutiwa/chameleon-cli@<tag or commit>` のように指定します。
+最新の開発版は GitHub から直接インストールできます。
+
+```bash
+uv tool install git+https://github.com/hidariutiwa/chameleon-cli
+```
+
+GitHub 版で特定のバージョンに固定したい場合は `git+https://github.com/hidariutiwa/chameleon-cli@<tag or commit>` のように指定します。
 
 アップデート / アンインストール:
 
@@ -71,3 +77,18 @@ uv sync
 uv run chameleon -f example/example.csv
 uv build   # dist/ に wheel と sdist を作成
 ```
+
+### リリース
+
+`v*` タグを push すると GitHub Actions (`.github/workflows/publish.yml`) が PyPI に公開します (Trusted Publishing)。
+
+```bash
+uv version --bump patch   # pyproject.toml の version を更新 (minor / major も可)
+git commit -am "chore: release v$(uv version --short)"
+git tag "v$(uv version --short)"
+git push origin main --tags
+```
+
+## ライセンス
+
+MIT

@@ -19,7 +19,7 @@ uv run chameleon -f data.xlsx -o out.csv        # output path (default: <name>_m
 uv build                                        # build wheel/sdist into dist/
 ```
 
-Distributed from GitHub (not PyPI): `uv tool install git+https://github.com/hidariutiwa/chameleon-cli`. Install instructions for users live in `README.md`.
+Published to PyPI as `chameleon-cli` (`uv tool install chameleon-cli`). Releases: bump `version` in `pyproject.toml` (`uv version --bump patch`), then push a `v<version>` tag; `.github/workflows/publish.yml` builds and runs `uv publish` via Trusted Publishing (environment `pypi`). Install instructions for users live in `README.md`.
 
 There is no test suite, linter, or type checker configured yet. Python files are formatted with Black (VS Code format-on-save via `ms-python.black-formatter`).
 
