@@ -35,4 +35,6 @@ Design points:
 - Fake types are `"masking"` (every character → `*`, same length) plus the keys of `FAKE_GENERATORS`; add a new type there.
 - `mask_column()` caches per column so identical original values get identical replacements; NaN stays NaN.
 - `fake_address()` uses ja_JP-only providers (`prefecture`, `chome`, …) and falls back to `fake.address()` for other locales. `create_example()` shares it, and with seed 223 it must keep producing the same `example.csv`.
+- questionary prompt texts live in `PROMPTS` (ja/en/zh), picked by `get_prompts()` from the language part of `-l`; other languages fall back to English. Add a language by adding a key there.
+- Terminal output goes through the module-level rich `console`: `print_header()` panel → input info → mask plan table → `Progress` bar per column (fed by `mask_column(..., on_row=...)`) → `print_result()` panel. Errors use `exit_with_error()` (red panel); questionary returning `None` (Ctrl-C) goes through `exit_cancelled()`.
 - `__init__.py` contains only the uv template `hello()` function.
