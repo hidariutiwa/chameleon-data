@@ -8,15 +8,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-Managed with [uv](https://docs.astral.sh/uv/); Python `>=3.14` (pinned in `.python-version`).
+Managed with [uv](https://docs.astral.sh/uv/). Supports Python `>=3.11` (pandas 3 is the floor); development uses 3.14 (pinned in `.python-version`).
 
 ```bash
 uv sync                                         # install dependencies into .venv
-uv run example                                  # generate example/example.csv (10 fake Japanese person rows, seed 223)
+uv run chameleon-example                        # generate example/example.csv (10 fake Japanese person rows, seed 223)
 uv run chameleon -f example/example.csv         # run the CLI (interactive prompts via questionary)
 uv run chameleon -f data.csv -l en_US -s 42     # locale and seed options
 uv run chameleon -f data.xlsx -o out.csv        # output path (default: <name>_masked.<suffix>)
+uv build                                        # build wheel/sdist into dist/
 ```
+
+Distributed from GitHub (not PyPI): `uv tool install git+https://github.com/hidariutiwa/chameleon-cli`. Install instructions for users live in `README.md`.
 
 There is no test suite, linter, or type checker configured yet. Python files are formatted with Black (VS Code format-on-save via `ms-python.black-formatter`).
 
@@ -24,12 +27,12 @@ There is no test suite, linter, or type checker configured yet. Python files are
 
 All logic lives in `src/chameleon_cli/main.py` (src layout, `uv_build` backend). Console scripts in `pyproject.toml`:
 
-- `chameleon` → `main()`: argparse (`-f`, `-o`, `-l`, `-s`) → `read_table()` → `questionary.checkbox` to choose columns → `questionary.select` per column to choose a fake type → `mask_column()` per column → `write_table()`.
-- `example` → `create_exqmple()` (note the typo; the entry point references this exact name): builds `ExampleData` pydantic models with Faker and writes `example/example.csv` relative to the current working directory.
+- `chameleon` → `main()`: argparse (`-f`, `-o`, `-l`, `-s`, `-v` from package metadata) → `read_table()` → `questionary.checkbox` to choose columns → `questionary.select` per column to choose a fake type → `mask_column()` per column → `write_table()`.
+- `chameleon-example` → `create_example()`: builds `ExampleData` pydantic models with Faker and writes `example/example.csv` relative to the current working directory.
 
 Design points:
 - Files are read with `dtype=str` so zip codes and phone numbers keep leading zeros; output is written with `index=False` in the same format as the suffix.
 - Fake types are `"masking"` (every character → `*`, same length) plus the keys of `FAKE_GENERATORS`; add a new type there.
 - `mask_column()` caches per column so identical original values get identical replacements; NaN stays NaN.
-- `fake_address()` uses ja_JP-only providers (`prefecture`, `chome`, …) and falls back to `fake.address()` for other locales. `create_exqmple()` shares it, and with seed 223 it must keep producing the same `example.csv`.
+- `fake_address()` uses ja_JP-only providers (`prefecture`, `chome`, …) and falls back to `fake.address()` for other locales. `create_example()` shares it, and with seed 223 it must keep producing the same `example.csv`.
 - `__init__.py` contains only the uv template `hello()` function.

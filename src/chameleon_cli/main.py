@@ -1,6 +1,7 @@
 import sys
 from argparse import ArgumentParser
 from collections.abc import Callable
+from importlib.metadata import version
 from pathlib import Path
 
 import pandas as pd
@@ -89,7 +90,13 @@ def exit_with_error(message: str) -> None:
 
 
 def main() -> None:
-    parser = ArgumentParser()
+    parser = ArgumentParser(
+        prog="chameleon",
+        description="mask columns of csv/tsv/xlsx file with fake data.",
+    )
+    parser.add_argument(
+        "-v", "--version", action="version", version=version("chameleon-cli")
+    )
     parser.add_argument(
         "-f",
         "--filepath",
@@ -154,7 +161,7 @@ def main() -> None:
     console.print(f"save masked file: {output_path}", style="cyan bold")
 
 
-def create_exqmple() -> None:
+def create_example() -> None:
     Faker.seed(223)
     fake = Faker("ja_JP")
 
@@ -180,4 +187,4 @@ def create_exqmple() -> None:
 
     df.to_csv(example_path)
     console.print(f"save example csv: {example_path}", style="cyan bold")
-    console.print(f"try it! -> uv run chameleon -f {example_path}", style="cyan bold")
+    console.print(f"try it! -> chameleon -f {example_path}", style="cyan bold")

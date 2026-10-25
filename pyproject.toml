@@ -1,12 +1,18 @@
 [project]
 name = "chameleon-cli"
 version = "0.1.0"
-description = "Add your description here"
+description = "Interactive CLI to mask columns of CSV/TSV/XLSX files with Faker-generated fake data"
 readme = "README.md"
 authors = [
-    { name = "hidariutiwa", email = "hidariutiwa22@gmaii.com" }
+    { name = "hidariutiwa", email = "hidariutiwa22@gmail.com" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.11"
+keywords = ["cli", "faker", "masking", "anonymize", "csv", "excel"]
+classifiers = [
+    "Environment :: Console",
+    "Programming Language :: Python :: 3",
+    "Topic :: Utilities",
+]
 dependencies = [
     "faker>=40.43.0",
     "openpyxl>=3.1.5",
@@ -16,10 +22,13 @@ dependencies = [
     "rich>=15.0.0",
 ]
 
+[project.urls]
+Repository = "https://github.com/hidariutiwa/chameleon-cli"
+
 [build-system]
 requires = ["uv_build>=0.11.14,<0.12.0"]
 build-backend = "uv_build"
 
 [project.scripts]
 chameleon = "chameleon_cli.main:main"
-example = "chameleon_cli.main:create_exqmple"
+chameleon-example = "chameleon_cli.main:create_example"
