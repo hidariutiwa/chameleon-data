@@ -3,7 +3,7 @@ import pytest
 from faker import Faker
 
 from chameleon_data.fakers import FAKE_GROUPS, NAME_TYPES, sample_fake_values
-from chameleon_data.main import PROMPTS, get_prompts
+from chameleon_data.prompts import PROMPTS, get_prompts
 from chameleon_data.masking import apply_masks, mask_column, mask_name_columns
 from chameleon_data.table_io import read_table, write_table
 

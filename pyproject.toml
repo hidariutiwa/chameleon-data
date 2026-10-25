@@ -38,5 +38,5 @@ dev = [
 ]
 
 [project.scripts]
-chameleon = "chameleon_data.main:main"
-chameleon-example = "chameleon_data.main:create_example"
+chameleon = "chameleon_data.cli:main"
+chameleon-example = "chameleon_data.example:create_example"
