@@ -13,7 +13,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.2
       - run: uv build
       - name: Smoke test wheel
         run: uv run --isolated --no-project --with dist/*.whl chameleon --version
