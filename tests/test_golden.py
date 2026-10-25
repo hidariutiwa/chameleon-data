@@ -4,8 +4,8 @@ import pandas as pd
 import pytest
 from faker import Faker
 
-from chameleon_data.fakers import sample_fake_values
 from chameleon_data.example import create_example
+from chameleon_data.fakers import sample_fake_values
 from chameleon_data.masking import apply_masks
 from chameleon_data.table_io import read_table, write_table
 

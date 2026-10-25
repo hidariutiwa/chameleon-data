@@ -34,9 +34,30 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "mypy>=2.4.0",
+    "pandas-stubs>=3.0.5.260914",
     "pytest>=9.1.1",
+    "ruff>=0.17.2",
 ]
 
 [project.scripts]
 chameleon = "chameleon_data.cli:main"
 chameleon-example = "chameleon_data.example:create_example"
+
+# lint only; formatting is done by Black
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false

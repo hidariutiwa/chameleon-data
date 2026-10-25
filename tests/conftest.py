@@ -16,7 +16,9 @@ def golden():
             GOLDEN_DIR.mkdir(exist_ok=True)
             expected.write_text(text, encoding="utf-8", newline="\n")
             return
-        assert expected.exists(), f"{expected} is missing; run with CHAMELEON_UPDATE_GOLDEN=1"
+        assert (
+            expected.exists()
+        ), f"{expected} is missing; run with CHAMELEON_UPDATE_GOLDEN=1"
         assert text.splitlines() == expected.read_text(encoding="utf-8").splitlines()
 
     return check

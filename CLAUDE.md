@@ -19,11 +19,14 @@ uv run chameleon -f data.xlsx -o out.csv        # output path (default: <name>_m
 uv build                                        # build wheel/sdist into dist/
 uv run pytest                                   # run tests (also run by .github/workflows/test.yml on 3.11 and 3.14)
 CHAMELEON_UPDATE_GOLDEN=1 uv run pytest         # rewrite tests/golden/ (only when an output change is intended)
+uv run ruff check                               # lint (also in CI)
+uv run mypy                                     # type check src/ and tests/ (also in CI)
+uvx black src tests                             # format (Black is not a project dependency)
 ```
 
 Published to PyPI as `chameleon-data` (`uv tool install chameleon-data`). Releases: bump `version` in `pyproject.toml` (`uv version --bump patch`), then push a `v<version>` tag; `.github/workflows/publish.yml` builds and runs `uv publish` via Trusted Publishing (environment `pypi`). Install instructions for users live in `README.md`.
 
-Tests (pytest, `tests/`) pin the current behavior: `test_golden.py` compares seeded output with `tests/golden/` (`example.csv` from seed 223, masked files from seed 42), `test_cli.py` runs `cli.main()` end to end with the questionary prompts monkeypatched, and `test_unit.py` covers the building blocks. No linter or type checker is configured yet. Python files are formatted with Black (VS Code format-on-save via `ms-python.black-formatter`).
+Tests (pytest, `tests/`) pin the current behavior: `test_golden.py` compares seeded output with `tests/golden/` (`example.csv` from seed 223, masked files from seed 42), `test_cli.py` runs `cli.main()` end to end with the questionary prompts monkeypatched, and `test_unit.py` covers the building blocks. ruff is used for lint only (rules `E4/E7/E9/F/I/B/UP`; line length is left to Black), and Python files are formatted with Black (VS Code format-on-save via `ms-python.black-formatter`). mypy runs in strict mode on `src/`; `tests.*` may leave functions unannotated (`tests/__init__.py` exists so the override matches). Config for both lives in `pyproject.toml`; `pandas-stubs` supplies pandas types.
 
 ## Architecture
 

@@ -53,7 +53,7 @@ def build_type_choices(
 
 
 def ask_columns(headers: list[str], prompts: dict[str, str]) -> list[str]:
-    columns = questionary.checkbox(
+    columns: list[str] | None = questionary.checkbox(
         prompts["select_columns"],
         headers,
         instruction=prompts["select_columns_hint"],
@@ -73,7 +73,7 @@ def ask_fake_types(
 ) -> dict[str, str]:
     fake_types: dict[str, str] = {}
     for column in columns:
-        fake_type = questionary.select(
+        fake_type: str | None = questionary.select(
             prompts["select_type"].format(column=column),
             build_type_choices(samples, df[column]),
             instruction=prompts["select_type_hint"],
