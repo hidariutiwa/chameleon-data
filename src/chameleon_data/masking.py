@@ -47,7 +47,7 @@ def mask_name_columns(
 ) -> pd.DataFrame:
     # one fake person per row; same original names -> same person
     columns = [column for column, t in fake_types.items() if t in NAME_TYPES]
-    persons: dict[tuple, dict[str, str]] = {}
+    persons: dict[tuple[str | None, ...], dict[str, str]] = {}
     masked = df[columns].copy()
 
     for index, row in df[columns].iterrows():
@@ -55,7 +55,7 @@ def mask_name_columns(
         if any(v is not None for v in key):
             if key not in persons:
                 persons[key] = fake_person(fake)
-            for column, value in zip(columns, key):
+            for column, value in zip(columns, key, strict=True):
                 if value is not None:
                     masked.at[index, column] = persons[key][fake_types[column]]
         if on_row is not None:
