@@ -1,5 +1,5 @@
 [project]
-name = "chameleon-cli"
+name = "chameleon-data"
 version = "0.1.0"
 description = "Interactive CLI to mask columns of CSV/TSV/XLSX files with Faker-generated fake data"
 readme = "README.md"
@@ -26,12 +26,12 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/hidariutiwa/chameleon-cli"
+Repository = "https://github.com/hidariutiwa/chameleon-data"
 
 [build-system]
 requires = ["uv_build>=0.11.14,<0.12.0"]
 build-backend = "uv_build"
 
 [project.scripts]
-chameleon = "chameleon_cli.main:main"
-chameleon-example = "chameleon_cli.main:create_example"
+chameleon = "chameleon_data.main:main"
+chameleon-example = "chameleon_data.main:create_example"

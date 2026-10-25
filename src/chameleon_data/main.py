@@ -95,7 +95,7 @@ def main() -> None:
         description="mask columns of csv/tsv/xlsx file with fake data.",
     )
     parser.add_argument(
-        "-v", "--version", action="version", version=version("chameleon-cli")
+        "-v", "--version", action="version", version=version("chameleon-data")
     )
     parser.add_argument(
         "-f",
