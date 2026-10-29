@@ -7,7 +7,12 @@ from faker import Faker
 
 from chameleon_data.fakers import sample_fake_values
 from chameleon_data.masking import apply_masks
-from chameleon_data.prompts import ask_columns, ask_fake_types, get_prompts
+from chameleon_data.prompts import (
+    ask_columns,
+    ask_fake_types,
+    get_prompts,
+    get_type_labels,
+)
 from chameleon_data.table_io import ALLOWED_SUFFIXES, read_table, write_table
 from chameleon_data.ui import (
     console,
@@ -81,7 +86,13 @@ def main() -> None:
     mask_columns = ask_columns(df, prompts)
     # samples consume random state, but seeding below resets it
     fake = Faker(args.language)
-    fake_types = ask_fake_types(mask_columns, df, sample_fake_values(fake), prompts)
+    fake_types = ask_fake_types(
+        mask_columns,
+        df,
+        sample_fake_values(fake),
+        prompts,
+        get_type_labels(args.language),
+    )
     print_mask_plan(fake_types)
 
     if args.seed is not None:

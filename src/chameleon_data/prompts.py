@@ -33,14 +33,68 @@ def get_prompts(language: str) -> dict[str, str]:
     return PROMPTS.get(language.split("_")[0].lower(), PROMPTS["en"])
 
 
+# display names of fake types and FAKE_GROUPS, keyed like PROMPTS;
+# languages without an entry show the plain type names
+TYPE_LABELS: dict[str, dict[str, str]] = {
+    "ja": {
+        MASKING: "マスク",
+        "person": "個人",
+        "full_name": "氏名",
+        "first_name": "名",
+        "last_name": "姓",
+        "full_name_kana": "氏名カナ",
+        "last_name_kana": "姓カナ",
+        "first_name_kana": "名カナ",
+        "email": "メールアドレス",
+        "user_name": "ユーザー名",
+        "date_of_birth": "生年月日",
+        "age": "年齢",
+        "phone_number": "電話番号",
+        "address": "住所",
+        "full_address": "住所",
+        "zipcode": "郵便番号",
+        "prefecture": "都道府県",
+        "city": "市区町村",
+        "street": "町名・番地",
+        "building": "建物名",
+        "business": "ビジネス",
+        "company": "会社名",
+        "job": "職業",
+        "url": "URL",
+        "domain": "ドメイン",
+        "ipv4": "IPv4アドレス",
+        "ipv4_private": "プライベートIPv4",
+        "finance / id": "金融・ID",
+        "credit_card_number": "クレジットカード番号",
+        "credit_card_expire": "カード有効期限",
+        "credit_card_security_code": "セキュリティコード",
+        "bank_account": "口座番号",
+        "iban": "IBAN",
+        "uuid": "UUID",
+        "passport_number": "旅券番号",
+        "number": "数値",
+        "date": "日付",
+    },
+}
+
+
+def get_type_labels(language: str) -> dict[str, str]:
+    return TYPE_LABELS.get(language.split("_")[0].lower(), {})
+
+
 def build_type_choices(
-    samples: dict[str, dict[str, str]], series: pd.Series
+    samples: dict[str, dict[str, str]], series: pd.Series, labels: dict[str, str]
 ) -> list[questionary.Choice | questionary.Separator]:
     # plain str titles: questionary's search filter calls title.lower()
-    width = max(len(name) for name in FAKE_GENERATORS) + 2
+    # the type name stays in the title so filtering by it keeps working
+    def display(name: str) -> str:
+        return f"{labels[name]} ({name})" if name in labels else name
+
+    names = [MASKING, *FAKE_GENERATORS]
+    width = max(cell_len(display(name)) for name in names) + 2
 
     def choice(name: str, sample: str) -> questionary.Choice:
-        return questionary.Choice(f"{name:<{width}}{sample}", name)
+        return questionary.Choice(set_cell_size(display(name), width) + sample, name)
 
     first = series.dropna()
     masked = "*" * len(first.iloc[0]) if len(first) else "****"
@@ -48,7 +102,7 @@ def build_type_choices(
         choice(MASKING, masked)
     ]
     for group, group_samples in samples.items():
-        choices.append(questionary.Separator(f"── {group} ──"))
+        choices.append(questionary.Separator(f"── {labels.get(group, group)} ──"))
         choices.extend(choice(name, sample) for name, sample in group_samples.items())
     return choices
 
@@ -93,12 +147,13 @@ def ask_fake_types(
     df: pd.DataFrame,
     samples: dict[str, dict[str, str]],
     prompts: dict[str, str],
+    labels: dict[str, str],
 ) -> dict[str, str]:
     fake_types: dict[str, str] = {}
     for column in columns:
         fake_type: str | None = questionary.select(
             prompts["select_type"].format(column=column),
-            build_type_choices(samples, df[column]),
+            build_type_choices(samples, df[column], labels),
             instruction=prompts["select_type_hint"],
             use_search_filter=True,
             use_jk_keys=False,
