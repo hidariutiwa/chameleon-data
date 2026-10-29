@@ -78,7 +78,7 @@ def main() -> None:
     print_input_info(input_path, df)
 
     prompts = get_prompts(args.language)
-    mask_columns = ask_columns(list(df.columns), prompts)
+    mask_columns = ask_columns(df, prompts)
     # samples consume random state, but seeding below resets it
     fake = Faker(args.language)
     fake_types = ask_fake_types(mask_columns, df, sample_fake_values(fake), prompts)
