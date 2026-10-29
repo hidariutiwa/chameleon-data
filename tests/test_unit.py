@@ -3,13 +3,22 @@ import pytest
 from faker import Faker
 from rich.cells import cell_len
 
-from chameleon_data.fakers import FAKE_GROUPS, NAME_TYPES, sample_fake_values
+from chameleon_data.fakers import (
+    FAKE_GENERATORS,
+    FAKE_GROUPS,
+    MASKING,
+    NAME_TYPES,
+    sample_fake_values,
+)
 from chameleon_data.masking import apply_masks, mask_column, mask_name_columns
 from chameleon_data.prompts import (
     COLUMN_SAMPLE_WIDTH,
     PROMPTS,
+    TYPE_LABELS,
     build_column_choices,
+    build_type_choices,
     get_prompts,
+    get_type_labels,
 )
 from chameleon_data.table_io import read_table, write_table
 
@@ -101,6 +110,36 @@ def test_build_column_choices_shows_samples():
     assert titles[1].endswith("…")
     assert cell_len(titles[1]) <= cell_len("empty  ") + COLUMN_SAMPLE_WIDTH
     assert cell_len(titles[1].split("東")[0]) == cell_len("empty  ")
+
+
+def test_type_labels_cover_every_type_and_group():
+    names = {MASKING, *FAKE_GENERATORS, *FAKE_GROUPS}
+    for labels in TYPE_LABELS.values():
+        assert labels.keys() == names
+
+
+def test_get_type_labels_falls_back_to_plain_names():
+    assert get_type_labels("ja_JP") is TYPE_LABELS["ja"]
+    assert get_type_labels("en_US") == {}
+
+
+def test_build_type_choices_shows_labels():
+    samples = {"person": {"full_name": "山田 太郎", "email": "a@example.com"}}
+    series = pd.Series(["山田"])
+
+    ja = build_type_choices(samples, series, TYPE_LABELS["ja"])
+    titles = [str(choice.title) for choice in ja]
+    assert titles[1] == "── 個人 ──"
+    assert titles[2].startswith("氏名 (full_name)")
+    assert ja[2].value == "full_name"  # values stay type names
+    # samples start at the same cell in every row
+    samples_shown = {0: "**", 2: "山田 太郎", 3: "a@example.com"}
+    starts = {cell_len(titles[i]) - cell_len(s) for i, s in samples_shown.items()}
+    assert len(starts) == 1
+
+    en = build_type_choices(samples, series, {})
+    assert str(en[1].title) == "── person ──"
+    assert str(en[2].title).startswith("full_name ")
 
 
 def test_name_types_are_person_generators():

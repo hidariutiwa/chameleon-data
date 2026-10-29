@@ -37,7 +37,7 @@ src layout (`uv_build` backend), package `src/chameleon_data/`:
 | `fakers.py` | `MASKING`, `FAKE_GROUPS` / `FAKE_GENERATORS`, `NAME_TYPES`, `fake_person()` / `fake_address()` / `fake_street()`, `sample_fake_values()` |
 | `table_io.py` | `TABLE_FORMATS` (suffix → reader, writer), `ALLOWED_SUFFIXES`, `read_table()` / `write_table()` |
 | `masking.py` | `mask_column()`, `mask_name_columns()`, `apply_masks()` (no UI dependency) |
-| `prompts.py` | `PROMPTS` / `get_prompts()`, `build_column_choices()`, `build_type_choices()`, `ask_columns()` / `ask_fake_types()` (questionary) |
+| `prompts.py` | `PROMPTS` / `get_prompts()`, `TYPE_LABELS` / `get_type_labels()`, `build_column_choices()`, `build_type_choices()`, `ask_columns()` / `ask_fake_types()` (questionary) |
 | `ui.py` | module-level rich `console`, `print_*()`, `make_progress()`, `exit_with_error()` / `exit_cancelled()` |
 | `cli.py` | `parse_args()`, `resolve_paths()`, `main()` |
 | `example.py` | `ExampleData`, `create_example()` |
@@ -56,5 +56,6 @@ Design points:
 - `apply_masks()` returns a masked copy and reports progress through `on_advance(column)` once per row and column. When two or more columns use name types (`NAME_TYPES`: full/first/last name and their kana), it lets `mask_name_columns()` replace them together: one `fake_person()` per row (cached by the row's original names), so full_name = last + first and kana match the kanji (ja_JP `*_name_pair`).
 - `fake_address()` uses ja_JP-only providers (`prefecture`, `chome`, …) and falls back to `fake.address()` for other locales. `create_example()` shares it, and with seed 223 it must keep producing the same `example.csv`.
 - questionary prompt texts live in `PROMPTS` (ja/en/zh), picked by `get_prompts()` from the language part of `-l`; other languages fall back to English. Add a language by adding a key there.
+- Type prompt display names live in `TYPE_LABELS` (ja only), picked by `get_type_labels()`; a choice shows `label (type)` so filtering by the type name still works, and languages without labels show the plain type. When adding a fake type or group, add its ja label too (`test_type_labels_cover_every_type_and_group` fails otherwise).
 - Terminal output goes through `ui.console`: `print_header()` panel → input info → mask plan table → `make_progress()` bar per column (fed by `apply_masks(..., on_advance=...)`) → `print_result()` panel. Errors use `exit_with_error()` (red panel); questionary returning `None` (Ctrl-C) goes through `exit_cancelled()`. Both are `NoReturn`.
 - `__init__.py` is empty.

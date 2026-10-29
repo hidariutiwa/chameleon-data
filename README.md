@@ -71,7 +71,7 @@ chameleon -f data.tsv -l en_US -s 42  # specify locale and seed
 | `-s`, `--seed` | Random seed. Set it to get the same result every time |
 | `-v`, `--version` | Show the version |
 
-When run, you pick the columns to mask with a checkbox prompt (each column is shown with up to three of its values, so you can see what it holds), then choose a replacement type for each column. Each type is shown with a sample value, and you can type to filter the list.
+When run, you pick the columns to mask with a checkbox prompt (each column is shown with up to three of its values, so you can see what it holds), then choose a replacement type for each column. Each type is shown with a sample value (with a Japanese name alongside for `ja` locales), and you can type to filter the list.
 
 | Group | Types |
 | --- | --- |

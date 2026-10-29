@@ -23,7 +23,7 @@ def test_main_end_to_end(tmp_path, monkeypatch, golden):
     monkeypatch.setattr(sys, "argv", ["chameleon", "-f", str(input_path), "-s", "42"])
     monkeypatch.setattr(cli, "ask_columns", lambda df, prompts: list(fake_types))
     monkeypatch.setattr(
-        cli, "ask_fake_types", lambda columns, df, samples, prompts: fake_types
+        cli, "ask_fake_types", lambda columns, df, samples, prompts, labels: fake_types
     )
 
     cli.main()
