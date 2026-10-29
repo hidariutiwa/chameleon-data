@@ -19,6 +19,13 @@ def fake_street(fake: Faker) -> str:
     return f"{fake.town()}{fake.chome()}{fake.ban()}{fake.gou()}"
 
 
+def fake_address_below_city(fake: Faker) -> str:
+    # address without the prefecture, for data that keeps it in another column
+    if not hasattr(fake, "chome"):
+        return f"{fake.street_address()}, {fake.city()}"
+    return f"{fake.city()}{fake_street(fake)}{fake.building_name()}{fake.building_number()}"
+
+
 # name types generated together per row so they describe the same person
 NAME_TYPES = {
     "full_name",
@@ -67,6 +74,7 @@ FAKE_GROUPS: dict[str, dict[str, Callable[[Faker], str]]] = {
     },
     "address": {
         "full_address": fake_address,
+        "address_below_city": fake_address_below_city,
         "zipcode": lambda fake: fake.zipcode(),
         "prefecture": lambda fake: fake.administrative_unit(),
         "city": lambda fake: fake.city(),

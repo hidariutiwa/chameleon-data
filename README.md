@@ -77,7 +77,7 @@ When run, you pick the columns to mask with a checkbox prompt (each column is sh
 | --- | --- |
 | — | `masking`: every character becomes `*` (length is kept) |
 | person | `full_name` / `first_name` / `last_name`, `full_name_kana` / `last_name_kana` / `first_name_kana`, `email`, `user_name`, `date_of_birth`, `age`, `phone_number` |
-| address | `full_address`, `zipcode`, `prefecture`, `city`, `street`, `building` |
+| address | `full_address`, `address_below_city`, `zipcode`, `prefecture`, `city`, `street`, `building` |
 | business | `company`, `job`, `url`, `domain`, `ipv4`, `ipv4_private` |
 | finance / id | `credit_card_number`, `credit_card_expire`, `credit_card_security_code`, `bank_account`, `iban`, `uuid`, `passport_number`, `number`, `date` |
 
