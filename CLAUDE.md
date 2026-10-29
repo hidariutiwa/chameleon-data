@@ -34,7 +34,7 @@ src layout (`uv_build` backend), package `src/chameleon_data/`:
 
 | module | role |
 |---|---|
-| `fakers.py` | `MASKING`, `FAKE_GROUPS` / `FAKE_GENERATORS`, `NAME_TYPES`, `fake_person()` / `fake_address()` / `fake_street()`, `sample_fake_values()` |
+| `fakers.py` | `MASKING`, `FAKE_GROUPS` / `FAKE_GENERATORS`, `NAME_TYPES`, `fake_person()` / `fake_address()` / `fake_street()` / `fake_address_below_city()`, `sample_fake_values()` |
 | `table_io.py` | `TABLE_FORMATS` (suffix → reader, writer), `ALLOWED_SUFFIXES`, `read_table()` / `write_table()` |
 | `masking.py` | `mask_column()`, `mask_name_columns()`, `apply_masks()` (no UI dependency) |
 | `prompts.py` | `PROMPTS` / `get_prompts()`, `TYPE_LABELS` / `get_type_labels()`, `build_column_choices()`, `build_type_choices()`, `ask_columns()` / `ask_fake_types()` (questionary) |

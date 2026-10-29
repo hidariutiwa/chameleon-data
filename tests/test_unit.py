@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 from faker import Faker
+from faker.providers.address.ja_JP import Provider as JaAddressProvider
 from rich.cells import cell_len
 
 from chameleon_data.fakers import (
@@ -8,6 +9,7 @@ from chameleon_data.fakers import (
     FAKE_GROUPS,
     MASKING,
     NAME_TYPES,
+    fake_address_below_city,
     sample_fake_values,
 )
 from chameleon_data.masking import apply_masks, mask_column, mask_name_columns
@@ -140,6 +142,17 @@ def test_build_type_choices_shows_labels():
     en = build_type_choices(samples, series, {})
     assert str(en[1].title) == "── person ──"
     assert str(en[2].title).startswith("full_name ")
+
+
+def test_fake_address_below_city_has_no_prefecture():
+    ja = Faker("ja_JP")
+    ja.seed_instance(0)
+    prefectures = tuple(JaAddressProvider.prefectures)
+    for _ in range(50):
+        address = fake_address_below_city(ja)
+        assert address and not address.startswith(prefectures)
+    # other locales have no chome provider but still get an address
+    assert fake_address_below_city(Faker("en_US"))
 
 
 def test_name_types_are_person_generators():

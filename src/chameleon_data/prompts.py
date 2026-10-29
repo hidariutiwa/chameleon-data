@@ -52,6 +52,7 @@ TYPE_LABELS: dict[str, dict[str, str]] = {
         "phone_number": "電話番号",
         "address": "住所",
         "full_address": "住所",
+        "address_below_city": "市区町村以下",
         "zipcode": "郵便番号",
         "prefecture": "都道府県",
         "city": "市区町村",
