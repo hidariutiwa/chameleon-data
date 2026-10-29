@@ -37,7 +37,7 @@ src layout (`uv_build` backend), package `src/chameleon_data/`:
 | `fakers.py` | `MASKING`, `FAKE_GROUPS` / `FAKE_GENERATORS`, `NAME_TYPES`, `fake_person()` / `fake_address()` / `fake_street()`, `sample_fake_values()` |
 | `table_io.py` | `TABLE_FORMATS` (suffix → reader, writer), `ALLOWED_SUFFIXES`, `read_table()` / `write_table()` |
 | `masking.py` | `mask_column()`, `mask_name_columns()`, `apply_masks()` (no UI dependency) |
-| `prompts.py` | `PROMPTS` / `get_prompts()`, `build_type_choices()`, `ask_columns()` / `ask_fake_types()` (questionary) |
+| `prompts.py` | `PROMPTS` / `get_prompts()`, `build_column_choices()`, `build_type_choices()`, `ask_columns()` / `ask_fake_types()` (questionary) |
 | `ui.py` | module-level rich `console`, `print_*()`, `make_progress()`, `exit_with_error()` / `exit_cancelled()` |
 | `cli.py` | `parse_args()`, `resolve_paths()`, `main()` |
 | `example.py` | `ExampleData`, `create_example()` |
@@ -51,6 +51,7 @@ Design points:
 - Files are read with `dtype=str` so zip codes and phone numbers keep leading zeros; output is written with `index=False` in the same format as the suffix. Add a format by adding a suffix to `TABLE_FORMATS`.
 - Fake types are `MASKING` (`"masking"`: every character → `*`, same length) plus the keys of `FAKE_GROUPS` (category → name → generator, flattened into `FAKE_GENERATORS`); add a new type to its category there.
 - The type prompt shows one sample per type: `sample_fake_values()` calls each generator once before seeding (so seeded output is unaffected) and drops generators raising `AttributeError` (provider missing in the locale). `build_type_choices()` uses plain-str titles because questionary's search filter calls `title.lower()`.
+- The column prompt shows up to 3 distinct non-null values per column (`build_column_choices()`), cut to `COLUMN_SAMPLE_WIDTH` cells; widths use `rich.cells.cell_len` so full-width names and values stay aligned.
 - `mask_column()` caches per column so identical original values get identical replacements; NaN stays NaN.
 - `apply_masks()` returns a masked copy and reports progress through `on_advance(column)` once per row and column. When two or more columns use name types (`NAME_TYPES`: full/first/last name and their kana), it lets `mask_name_columns()` replace them together: one `fake_person()` per row (cached by the row's original names), so full_name = last + first and kana match the kanji (ja_JP `*_name_pair`).
 - `fake_address()` uses ja_JP-only providers (`prefecture`, `chome`, …) and falls back to `fake.address()` for other locales. `create_example()` shares it, and with seed 223 it must keep producing the same `example.csv`.

@@ -1,10 +1,16 @@
 import pandas as pd
 import pytest
 from faker import Faker
+from rich.cells import cell_len
 
 from chameleon_data.fakers import FAKE_GROUPS, NAME_TYPES, sample_fake_values
 from chameleon_data.masking import apply_masks, mask_column, mask_name_columns
-from chameleon_data.prompts import PROMPTS, get_prompts
+from chameleon_data.prompts import (
+    COLUMN_SAMPLE_WIDTH,
+    PROMPTS,
+    build_column_choices,
+    get_prompts,
+)
 from chameleon_data.table_io import read_table, write_table
 
 
@@ -75,6 +81,26 @@ def test_get_prompts_falls_back_to_english():
     assert get_prompts("ja_JP") is PROMPTS["ja"]
     assert get_prompts("zh_TW") is PROMPTS["zh"]
     assert get_prompts("fr_FR") is PROMPTS["en"]
+
+
+def test_build_column_choices_shows_samples():
+    df = pd.DataFrame(
+        {
+            "id": ["1", "1", None, "2", "3", "4"],
+            "住所": ["東京都" * 20, None, None, None, None, None],
+            "empty": [None] * 6,
+        }
+    )
+    choices = build_column_choices(df)
+    titles = [str(choice.title) for choice in choices]
+    assert [choice.value for choice in choices] == ["id", "住所", "empty"]
+    # NaN and duplicates are skipped, at most three values
+    assert titles[0].endswith("1, 2, 3")
+    assert titles[2].endswith("-")
+    # long values are cut to the width, full-width names keep samples aligned
+    assert titles[1].endswith("…")
+    assert cell_len(titles[1]) <= cell_len("empty  ") + COLUMN_SAMPLE_WIDTH
+    assert cell_len(titles[1].split("東")[0]) == cell_len("empty  ")
 
 
 def test_name_types_are_person_generators():
