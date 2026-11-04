@@ -5,7 +5,7 @@ An interactive CLI that replaces selected columns of a CSV / TSV / XLSX file wit
 ## Installation
 
 Published on PyPI as [`chameleon-data`](https://pypi.org/project/chameleon-data/). Requires Python 3.11 or later.
-After installation, the `chameleon` and `chameleon-example` commands are available.
+After installation, the `chameleon` command is available.
 
 ### uv
 
@@ -14,7 +14,7 @@ After installation, the `chameleon` and `chameleon-example` commands are availab
 uv tool install chameleon-data
 
 # Run once without installing
-uvx --from chameleon-data chameleon -f data.csv
+uvx --from chameleon-data chameleon mask -f data.csv
 
 # Add as a dependency of another project
 uv add chameleon-data
@@ -57,10 +57,19 @@ To pin a specific version, use `git+https://github.com/hidariutiwa/chameleon-dat
 
 ## Usage
 
+| Command | Description |
+| --- | --- |
+| `chameleon mask` | Mask columns of a file with fake data |
+| `chameleon example` | Write a sample file to `./example/example.csv` |
+
+`chameleon -v` shows the version, and `chameleon <command> -h` shows the options of each command.
+
+### mask
+
 ```bash
-chameleon -f data.csv                 # saves to data_masked.csv
-chameleon -f data.xlsx -o out.xlsx    # specify the output path
-chameleon -f data.tsv -l en_US -s 42  # specify locale and seed
+chameleon mask -f data.csv                 # saves to data_masked.csv
+chameleon mask -f data.xlsx -o out.xlsx    # specify the output path
+chameleon mask -f data.tsv -l en_US -s 42  # specify locale and seed
 ```
 
 | Option | Description |
@@ -69,7 +78,6 @@ chameleon -f data.tsv -l en_US -s 42  # specify locale and seed
 | `-o`, `--output` | Output file. Defaults to `<filename>_masked.<suffix>` |
 | `-l`, `--language` | Faker locale. Defaults to `ja_JP` |
 | `-s`, `--seed` | Random seed. Set it to get the same result every time |
-| `-v`, `--version` | Show the version |
 
 When run, you pick the columns to mask with a checkbox prompt (each column is shown with up to three of its values, so you can see what it holds), then choose a replacement type for each column. Each type is shown with a sample value (with a Japanese name alongside for `ja` locales), and you can type to filter the list.
 
@@ -88,9 +96,18 @@ Identical values are replaced with identical fake values, so relationships betwe
 ### Sample data
 
 ```bash
-chameleon-example   # writes a sample to ./example/example.csv
-chameleon -f example/example.csv
+chameleon example   # writes a sample to ./example/example.csv
+chameleon mask -f example/example.csv
 ```
+
+### Migrating from v0.4
+
+The v0.4 commands still work in v0.5 but print a deprecation warning, and will be removed in v0.6.0.
+
+| v0.4 | v0.5 and later |
+| --- | --- |
+| `chameleon -f data.csv ...` | `chameleon mask -f data.csv ...` |
+| `chameleon-example` | `chameleon example` |
 
 ## Development
 
@@ -98,7 +115,7 @@ Uses [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-uv run chameleon -f example/example.csv
+uv run chameleon mask -f example/example.csv
 uv build   # builds a wheel and sdist into dist/
 ```
 

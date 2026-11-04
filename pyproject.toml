@@ -42,7 +42,8 @@ dev = [
 
 [project.scripts]
 chameleon = "chameleon_data.cli:main"
-chameleon-example = "chameleon_data.example:create_example"
+# deprecated alias of "chameleon example"; remove in v0.6.0
+chameleon-example = "chameleon_data.cli:legacy_example"
 
 # lint only; formatting is done by Black
 [tool.ruff]

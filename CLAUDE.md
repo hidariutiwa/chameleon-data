@@ -12,10 +12,10 @@ Managed with [uv](https://docs.astral.sh/uv/). Supports Python `>=3.11` (pandas 
 
 ```bash
 uv sync                                         # install dependencies into .venv
-uv run chameleon-example                        # generate example/example.csv (10 fake Japanese person rows, seed 223)
-uv run chameleon -f example/example.csv         # run the CLI (interactive prompts via questionary)
-uv run chameleon -f data.csv -l en_US -s 42     # locale and seed options
-uv run chameleon -f data.xlsx -o out.csv        # output path (default: <name>_masked.<suffix>)
+uv run chameleon example                        # generate example/example.csv (10 fake Japanese person rows, seed 223)
+uv run chameleon mask -f example/example.csv    # run the CLI (interactive prompts via questionary)
+uv run chameleon mask -f data.csv -l en_US -s 42  # locale and seed options
+uv run chameleon mask -f data.xlsx -o out.csv   # output path (default: <name>_masked.<suffix>)
 uv build                                        # build wheel/sdist into dist/
 uv run pytest                                   # run tests (also run by .github/workflows/test.yml on 3.11 and 3.14)
 CHAMELEON_UPDATE_GOLDEN=1 uv run pytest         # rewrite tests/golden/ (only when an output change is intended)
@@ -39,13 +39,16 @@ src layout (`uv_build` backend), package `src/chameleon_data/`:
 | `masking.py` | `mask_column()`, `mask_name_columns()`, `apply_masks()` (no UI dependency) |
 | `prompts.py` | `PROMPTS` / `get_prompts()`, `TYPE_LABELS` / `get_type_labels()`, `build_column_choices()`, `build_type_choices()`, `ask_columns()` / `ask_fake_types()` (questionary) |
 | `ui.py` | module-level rich `console`, `print_*()`, `make_progress()`, `exit_with_error()` / `exit_cancelled()` |
-| `cli.py` | `parse_args()`, `resolve_paths()`, `main()` |
+| `cli.py` | `build_parser()`, `normalize_argv()`, `parse_args()`, `resolve_paths()`, `run_mask()`, `main()`, `legacy_example()` |
 | `example.py` | `ExampleData`, `create_example()` |
 
 Console scripts in `pyproject.toml`:
 
-- `chameleon` → `cli.main()`: argparse (`-f`, `-o`, `-l`, `-s`, `-v` from package metadata) → `read_table()` → `ask_columns()` → `ask_fake_types()` → `apply_masks()` → `write_table()`.
-- `chameleon-example` → `example.create_example()`: builds `ExampleData` pydantic models with Faker and writes `example/example.csv` relative to the current working directory.
+- `chameleon` → `cli.main(argv=None)`: argparse with subcommands (`-v` from package metadata at the top level). Add a command by adding a subparser in `build_parser()`, its name to `COMMANDS`, and a branch in `main()`.
+  - `chameleon mask` → `run_mask()`: `-f` (required), `-o`, `-l`, `-s` → `read_table()` → `ask_columns()` → `ask_fake_types()` → `apply_masks()` → `write_table()`.
+  - `chameleon example` → `example.create_example()`: builds `ExampleData` pydantic models with Faker and writes `example/example.csv` relative to the current working directory.
+- `chameleon-example` → `cli.legacy_example()`: deprecated alias of `chameleon example` (prints a warning).
+- Deprecated v0.4 form: `normalize_argv()` rewrites argv that does not start with a command (or `-h`/`-v`) to `mask ...` and `parse_args()` prints a warning, so `chameleon -f data.csv` keeps working. Both deprecated paths are removed in v0.6.0.
 
 Design points:
 - Files are read with `dtype=str` so zip codes and phone numbers keep leading zeros; output is written with `index=False` in the same format as the suffix. Add a format by adding a suffix to `TABLE_FORMATS`.
