@@ -12,6 +12,7 @@ from chameleon_data.fakers import (
     fake_address_below_city,
     sample_fake_values,
 )
+from chameleon_data.generate import generate_table
 from chameleon_data.masking import apply_masks, mask_column, mask_name_columns
 from chameleon_data.prompts import (
     COLUMN_SAMPLE_WIDTH,
@@ -22,7 +23,7 @@ from chameleon_data.prompts import (
     get_prompts,
     get_type_labels,
 )
-from chameleon_data.table_io import read_table, write_table
+from chameleon_data.table_io import read_header, read_table, write_table
 
 
 def test_mask_column_keeps_relations_and_nan():
@@ -157,6 +158,73 @@ def test_fake_address_below_city_has_no_prefecture():
 
 def test_name_types_are_person_generators():
     assert NAME_TYPES <= FAKE_GROUPS["person"].keys()
+
+
+def test_generate_table_shape_and_progress():
+    fake_types = {"city": "city", "id": "uuid", "zip": "zipcode"}
+    advanced: list[str] = []
+    df = generate_table(fake_types, 3, Faker("ja_JP"), advanced.append)
+    assert list(df.columns) == ["city", "id", "zip"]
+    assert len(df) == 3
+    assert df["id"].is_unique
+    assert sorted(advanced) == sorted(["city", "id", "zip"] * 3)
+
+
+def test_generate_table_describes_one_person_per_row():
+    fake_types = {
+        "full": "full_name",
+        "first": "first_name",
+        "last": "last_name",
+        "full_kana": "full_name_kana",
+        "first_kana": "first_name_kana",
+        "last_kana": "last_name_kana",
+    }
+    df = generate_table(fake_types, 20, Faker("ja_JP"))
+    for _, row in df.iterrows():
+        assert row["full"] == f"{row['last']} {row['first']}"
+        assert row["full_kana"] == f"{row['last_kana']} {row['first_kana']}"
+
+
+def test_generate_table_single_name_column_uses_its_generator():
+    df = generate_table({"kana": "full_name_kana"}, 5, Faker("ja_JP"))
+    assert df["kana"].str.contains(" ").all()
+
+
+@pytest.mark.parametrize("suffix", [".csv", ".tsv", ".xlsx"])
+def test_read_header_reads_only_column_names(tmp_path, suffix):
+    path = tmp_path / f"t{suffix}"
+    write_table(pd.DataFrame({"氏名": ["a", "b"], "zip": ["001", "002"]}), path)
+    assert read_header(path) == ["氏名", "zip"]
+
+
+def test_write_table_json_keeps_japanese(tmp_path):
+    path = tmp_path / "t.json"
+    write_table(pd.DataFrame({"氏名": ["山田 太郎"], "zip": ["001-0001"]}), path)
+    text = path.read_text(encoding="utf-8")
+    assert "山田 太郎" in text
+    assert pd.read_json(path, dtype=False).to_dict("records") == [
+        {"氏名": "山田 太郎", "zip": "001-0001"}
+    ]
+
+
+def test_read_table_still_rejects_json(tmp_path):
+    # json is write-only; mask keeps csv/tsv/xlsx
+    with pytest.raises(ValueError, match=r"\.json is not allowed"):
+        read_table(tmp_path / "t.json")
+
+
+def test_build_type_choices_without_series_has_no_masking():
+    samples = {"person": {"full_name": "山田 太郎"}}
+    choices = build_type_choices(samples, None, TYPE_LABELS["ja"])
+    values = [getattr(choice, "value", None) for choice in choices]
+    assert MASKING not in values
+    assert values[1] == "full_name"
+
+
+def test_prompts_have_the_same_keys():
+    keys = PROMPTS["en"].keys()
+    for prompts in PROMPTS.values():
+        assert prompts.keys() == keys
 
 
 def test_sample_fake_values_drops_unsupported():

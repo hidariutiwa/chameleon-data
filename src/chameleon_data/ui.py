@@ -38,8 +38,13 @@ def print_deprecation(old: str, new: str) -> None:
     )
 
 
-def print_header(language: str, seed: int | None, app_version: str) -> None:
-    info = f"[dim]mask columns with fake data[/]  ·  locale [cyan]{language}[/]"
+def print_header(
+    language: str,
+    seed: int | None,
+    app_version: str,
+    subtitle: str = "mask columns with fake data",
+) -> None:
+    info = f"[dim]{subtitle}[/]  ·  locale [cyan]{language}[/]"
     if seed is not None:
         info += f"  ·  seed [cyan]{seed}[/]"
     console.print(
@@ -55,6 +60,13 @@ def print_input_info(path: Path, df: pd.DataFrame) -> None:
     console.print(
         f"[bold]Input[/]  {path.name}  [dim]·[/]  {path.suffix[1:].upper()}"
         f"  [dim]·[/]  {len(df)} rows × {len(df.columns)} columns"
+    )
+
+
+def print_template_info(path: Path, columns: list[str]) -> None:
+    console.print(
+        f"[bold]Template[/]  {path.name}  [dim]·[/]  {path.suffix[1:].upper()}"
+        f"  [dim]·[/]  {len(columns)} columns"
     )
 
 
@@ -79,14 +91,18 @@ def make_progress() -> Progress:
 
 
 def print_result(
-    output_path: Path, rows: int, columns: list[str], elapsed: float
+    output_path: Path,
+    rows: int,
+    columns: list[str],
+    elapsed: float,
+    columns_label: str = "masked",
 ) -> None:
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold")
     grid.add_column(overflow="fold")
     grid.add_row("output", f"[cyan]{output_path}[/]")
     grid.add_row("rows", str(rows))
-    grid.add_row("masked", ", ".join(columns))
+    grid.add_row(columns_label, ", ".join(columns))
     grid.add_row("elapsed", f"{elapsed:.2f}s")
     console.print(
         Panel.fit(grid, title="✔ done", title_align="left", border_style="green")
