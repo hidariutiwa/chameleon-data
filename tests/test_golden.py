@@ -6,6 +6,7 @@ from faker import Faker
 
 from chameleon_data.example import create_example
 from chameleon_data.fakers import sample_fake_values
+from chameleon_data.generate import generate_table
 from chameleon_data.masking import apply_masks
 from chameleon_data.table_io import read_table, write_table
 
@@ -18,6 +19,31 @@ def run_masks(df: pd.DataFrame, fake_types: dict[str, str], seed: int) -> pd.Dat
     sample_fake_values(fake)
     Faker.seed(seed)
     return apply_masks(df, fake_types, fake)
+
+
+# the columns of example.csv, as `chameleon generate -f example.csv` would offer
+GENERATE_TYPES = {
+    "no": "number",
+    "first_name": "first_name",
+    "last_name": "last_name",
+    "zipcode": "zipcode",
+    "address": "full_address",
+    "phone_number": "phone_number",
+}
+
+
+def run_generate(fake_types: dict[str, str], rows: int, seed: int) -> pd.DataFrame:
+    # same order as run_generate(): samples before seeding
+    fake = Faker("ja_JP")
+    sample_fake_values(fake)
+    Faker.seed(seed)
+    return generate_table(fake_types, rows, fake)
+
+
+def test_generate(tmp_path, golden):
+    output = tmp_path / "generated.csv"
+    write_table(run_generate(GENERATE_TYPES, rows=10, seed=42), output)
+    golden("generated.csv", output)
 
 
 def test_create_example(tmp_path, monkeypatch, golden):

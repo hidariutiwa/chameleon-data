@@ -12,18 +12,30 @@ PROMPTS: dict[str, dict[str, str]] = {
         "select_columns_hint": "(↑↓で移動、スペースで選択、aで全選択、iで反転、Enterで決定)",
         "select_type": "{column} の置き換え方法を選択してください",
         "select_type_hint": "(↑↓で移動、文字入力で絞り込み、Enterで決定)",
+        "select_generate_type": "{column} に生成するデータの種類を選択してください",
+        "enter_column": "{number} 列目の列名を入力してください",
+        "enter_column_hint": "(空のままEnterで入力を終了)",
+        "duplicate_column": "{column} はすでに入力されています",
     },
     "en": {
         "select_columns": "select masking columns",
         "select_columns_hint": "(↑↓ to move, <space> to select, <a> to toggle, <i> to invert)",
         "select_type": "type of {column}",
         "select_type_hint": "(↑↓ to move, type to filter, <enter> to choose)",
+        "select_generate_type": "type of {column}",
+        "enter_column": "name of column {number}",
+        "enter_column_hint": "(leave empty and press <enter> to finish)",
+        "duplicate_column": "{column} is already entered",
     },
     "zh": {
         "select_columns": "请选择要脱敏的列",
         "select_columns_hint": "(↑↓ 移动，空格 选择，a 全选，i 反选，回车 确认)",
         "select_type": "请选择 {column} 的替换方式",
         "select_type_hint": "(↑↓ 移动，输入文字 筛选，回车 确认)",
+        "select_generate_type": "请选择 {column} 要生成的数据类型",
+        "enter_column": "请输入第 {number} 列的列名",
+        "enter_column_hint": "(留空并按回车 结束输入)",
+        "duplicate_column": "{column} 已经输入过了",
     },
 }
 
@@ -84,24 +96,27 @@ def get_type_labels(language: str) -> dict[str, str]:
 
 
 def build_type_choices(
-    samples: dict[str, dict[str, str]], series: pd.Series, labels: dict[str, str]
+    samples: dict[str, dict[str, str]],
+    series: pd.Series | None,
+    labels: dict[str, str],
 ) -> list[questionary.Choice | questionary.Separator]:
     # plain str titles: questionary's search filter calls title.lower()
     # the type name stays in the title so filtering by it keeps working
+    # series is None when there are no original values (generate): no masking choice
     def display(name: str) -> str:
         return f"{labels[name]} ({name})" if name in labels else name
 
-    names = [MASKING, *FAKE_GENERATORS]
+    names = [*FAKE_GENERATORS] if series is None else [MASKING, *FAKE_GENERATORS]
     width = max(cell_len(display(name)) for name in names) + 2
 
     def choice(name: str, sample: str) -> questionary.Choice:
         return questionary.Choice(set_cell_size(display(name), width) + sample, name)
 
-    first = series.dropna()
-    masked = "*" * len(first.iloc[0]) if len(first) else "****"
-    choices: list[questionary.Choice | questionary.Separator] = [
-        choice(MASKING, masked)
-    ]
+    choices: list[questionary.Choice | questionary.Separator] = []
+    if series is not None:
+        first = series.dropna()
+        masked = "*" * len(first.iloc[0]) if len(first) else "****"
+        choices.append(choice(MASKING, masked))
     for group, group_samples in samples.items():
         choices.append(questionary.Separator(f"── {labels.get(group, group)} ──"))
         choices.extend(choice(name, sample) for name, sample in group_samples.items())
@@ -143,23 +158,68 @@ def ask_columns(df: pd.DataFrame, prompts: dict[str, str]) -> list[str]:
     return columns
 
 
+def ask_fake_type(
+    column: str,
+    series: pd.Series | None,
+    samples: dict[str, dict[str, str]],
+    prompts: dict[str, str],
+    labels: dict[str, str],
+) -> str:
+    message = "select_type" if series is not None else "select_generate_type"
+    fake_type: str | None = questionary.select(
+        prompts[message].format(column=column),
+        build_type_choices(samples, series, labels),
+        instruction=prompts["select_type_hint"],
+        use_search_filter=True,
+        use_jk_keys=False,
+    ).ask()
+    if fake_type is None:
+        exit_cancelled()
+    return fake_type
+
+
 def ask_fake_types(
     columns: list[str],
-    df: pd.DataFrame,
+    df: pd.DataFrame | None,
     samples: dict[str, dict[str, str]],
     prompts: dict[str, str],
     labels: dict[str, str],
 ) -> dict[str, str]:
+    # df is None when generating: there are no original values to mask
+    return {
+        column: ask_fake_type(
+            column, None if df is None else df[column], samples, prompts, labels
+        )
+        for column in columns
+    }
+
+
+def ask_new_columns(
+    samples: dict[str, dict[str, str]],
+    prompts: dict[str, str],
+    labels: dict[str, str],
+) -> dict[str, str]:
+    # column name -> type, entered one by one until an empty name
     fake_types: dict[str, str] = {}
-    for column in columns:
-        fake_type: str | None = questionary.select(
-            prompts["select_type"].format(column=column),
-            build_type_choices(samples, df[column], labels),
-            instruction=prompts["select_type_hint"],
-            use_search_filter=True,
-            use_jk_keys=False,
+
+    def validate(name: str) -> bool | str:
+        if name.strip() in fake_types:
+            return prompts["duplicate_column"].format(column=name.strip())
+        return True
+
+    while True:
+        name: str | None = questionary.text(
+            prompts["enter_column"].format(number=len(fake_types) + 1),
+            instruction=prompts["enter_column_hint"],
+            validate=validate,
         ).ask()
-        if fake_type is None:
+        if name is None:
             exit_cancelled()
-        fake_types[column] = fake_type
+        name = name.strip()
+        if not name:
+            break
+        fake_types[name] = ask_fake_type(name, None, samples, prompts, labels)
+
+    if not fake_types:
+        exit_with_error("no columns entered.")
     return fake_types
