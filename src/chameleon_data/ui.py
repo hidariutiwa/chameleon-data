@@ -31,6 +31,13 @@ def exit_cancelled() -> NoReturn:
     sys.exit(1)
 
 
+def print_deprecation(old: str, new: str) -> None:
+    console.print(
+        f"[yellow]warning:[/] [bold]{old}[/] is deprecated and will be removed"
+        f" in v0.6.0. use [bold]{new}[/] instead."
+    )
+
+
 def print_header(language: str, seed: int | None, app_version: str) -> None:
     info = f"[dim]mask columns with fake data[/]  ·  locale [cyan]{language}[/]"
     if seed is not None:

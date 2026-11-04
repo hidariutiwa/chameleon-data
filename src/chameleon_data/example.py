@@ -55,7 +55,7 @@ def create_example() -> None:
     console.print(
         Panel.fit(
             f"[bold]saved[/]    [cyan]{example_path}[/]\n"
-            f"[bold]try it![/]  chameleon -f {example_path}",
+            f"[bold]try it![/]  chameleon mask -f {example_path}",
             title="✔ example",
             title_align="left",
             border_style="green",
