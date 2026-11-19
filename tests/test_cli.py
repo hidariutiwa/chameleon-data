@@ -1,3 +1,5 @@
+import codecs
+import csv
 import shutil
 from pathlib import Path
 
@@ -43,6 +45,34 @@ def test_legacy_mask_form_still_works(tmp_path, example_input, golden, capsys):
 
     golden("masked_names.csv", tmp_path / "example_masked.csv")
     assert "deprecated" in capsys.readouterr().out
+
+
+def test_mask_tsv_end_to_end(tmp_path, example_input):
+    # same data as example.csv, saved as an Excel-style cp932 tsv with a '"' in a value
+    df = read_table(example_input)
+    df.loc[0, "phone_number"] = '0"1'
+    tsv = tmp_path / "example.TSV"
+    tsv.write_bytes(
+        df.to_csv(sep="\t", index=False, quoting=csv.QUOTE_NONE).encode("cp932")
+    )
+
+    cli.main(["mask", "-f", str(tsv), "-s", "42"])
+
+    output = tmp_path / "example_masked.TSV"
+    assert output.read_bytes().startswith(codecs.BOM_UTF8)
+    masked = read_table(output)
+    assert masked.shape == df.shape
+    assert masked.loc[0, "phone_number"] == "***"  # masking keeps the length of 0"1
+    assert masked["zipcode"].ne(df["zipcode"]).any()
+
+
+def test_mask_reports_unreadable_file(tmp_path, capsys):
+    path = tmp_path / "bad.tsv"
+    path.write_text("a\tb\n1\t2\n1\t2\t3\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["mask", "-f", str(path)])
+    assert exc.value.code == 1
+    assert "could not be read" in capsys.readouterr().out
 
 
 def test_mask_rejects_unknown_suffix():

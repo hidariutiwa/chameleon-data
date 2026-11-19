@@ -23,7 +23,14 @@ from chameleon_data.prompts import (
     get_prompts,
     get_type_labels,
 )
-from chameleon_data.table_io import read_header, read_table, write_table
+from chameleon_data.table_io import (
+    TableIOError,
+    detect_encoding,
+    output_encoding,
+    read_header,
+    read_table,
+    write_table,
+)
 
 
 def test_mask_column_keeps_relations_and_nan():
@@ -68,6 +75,85 @@ def test_table_round_trip_keeps_leading_zeros(tmp_path, suffix):
     path = tmp_path / f"t{suffix}"
     write_table(df, path)
     assert read_table(path).equals(df)
+
+
+def test_tsv_keeps_double_quotes_as_is(tmp_path):
+    # tsv has no quoting: '"' inside a value must not be eaten on read or added on write
+    path = tmp_path / "t.tsv"
+    path.write_text(
+        'name\tnote\n山田\t27"モニター\n鈴木\t"至急"対応\n', encoding="utf-8"
+    )
+    df = read_table(path)
+    assert list(df["note"]) == ['27"モニター', '"至急"対応']
+
+    out = tmp_path / "out.tsv"
+    write_table(df, out)
+    assert out.read_text(encoding="utf-8") == path.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("encoding", "detected"),
+    [
+        ("utf-8", "utf-8"),
+        ("utf-8-sig", "utf-8-sig"),
+        ("cp932", "cp932"),
+        ("utf-16", "utf-16"),
+    ],
+)
+@pytest.mark.parametrize("suffix", [".csv", ".tsv"])
+def test_read_table_detects_encoding(tmp_path, suffix, encoding, detected):
+    sep = "\t" if suffix == ".tsv" else ","
+    path = tmp_path / f"t{suffix}"
+    path.write_bytes(f"氏名{sep}zip\n山田 太郎{sep}0010001\n".encode(encoding))
+
+    assert detect_encoding(path) == detected
+    assert read_table(path).to_dict("records") == [
+        {"氏名": "山田 太郎", "zip": "0010001"}
+    ]
+    assert read_header(path) == ["氏名", "zip"]
+
+
+@pytest.mark.parametrize(
+    ("encoding", "expected"),
+    [
+        ("utf-8", "utf-8"),
+        ("utf-8-sig", "utf-8-sig"),
+        ("cp932", "utf-8-sig"),
+        ("utf-16", "utf-8-sig"),
+    ],
+)
+def test_output_encoding_adds_bom_unless_plain_utf8(tmp_path, encoding, expected):
+    path = tmp_path / "t.tsv"
+    path.write_bytes("氏名\n山田\n".encode(encoding))
+    assert output_encoding(path) == expected
+
+
+def test_output_encoding_of_xlsx_is_utf8(tmp_path):
+    path = tmp_path / "t.xlsx"
+    write_table(pd.DataFrame({"a": ["1"]}), path)
+    assert output_encoding(path) == "utf-8"
+
+
+def test_table_accepts_upper_case_suffix(tmp_path):
+    path = tmp_path / "t.TSV"
+    df = pd.DataFrame({"zipcode": ["0010001"]})
+    write_table(df, path)
+    assert "\t" not in path.read_text(encoding="utf-8")  # one column: no separator
+    assert read_table(path).equals(df)
+    assert read_header(path) == ["zipcode"]
+
+
+def test_read_table_reports_ragged_rows(tmp_path):
+    path = tmp_path / "t.tsv"
+    path.write_text("a\tb\n1\t2\n1\t2\t3\n", encoding="utf-8")
+    with pytest.raises(TableIOError, match=r"t\.tsv could not be read.*Expected 2"):
+        read_table(path)
+
+
+def test_write_tsv_reports_tab_in_value(tmp_path):
+    # e.g. a csv value with a tab written out as tsv (mask -f in.csv -o out.tsv)
+    with pytest.raises(TableIOError, match=r"t\.tsv could not be written"):
+        write_table(pd.DataFrame({"a": ["x\ty"]}), tmp_path / "t.tsv")
 
 
 def test_table_rejects_unknown_suffix(tmp_path):
