@@ -37,7 +37,7 @@ src layout (`uv_build` backend), package `src/chameleon_data/`:
 | module | role |
 |---|---|
 | `fakers.py` | `MASKING`, `FAKE_GROUPS` / `FAKE_GENERATORS`, `NAME_TYPES`, `fake_person()` / `fake_address()` / `fake_street()` / `fake_address_below_city()`, `sample_fake_values()` |
-| `table_io.py` | `TABLE_FORMATS` (suffix → reader, writer), `ALLOWED_SUFFIXES`, `HEADER_READERS`, `OUTPUT_FORMATS` / `OUTPUT_SUFFIXES` (adds write-only `.json`), `read_table()` / `read_header()` / `write_table()` |
+| `table_io.py` | `TABLE_FORMATS` (suffix → reader, writer), `ALLOWED_SUFFIXES`, `HEADER_READERS`, `OUTPUT_FORMATS` / `OUTPUT_SUFFIXES` (adds write-only `.json`), `TableIOError`, `table_suffix()`, `detect_encoding()` / `output_encoding()`, `read_table()` / `read_header()` / `write_table()` |
 | `masking.py` | `mask_column()`, `mask_name_columns()`, `apply_masks()` (no UI dependency) |
 | `generate.py` | `generate_table()` (no UI dependency) |
 | `prompts.py` | `PROMPTS` / `get_prompts()`, `TYPE_LABELS` / `get_type_labels()`, `build_column_choices()`, `build_type_choices()`, `ask_columns()` / `ask_fake_type()` / `ask_fake_types()` / `ask_new_columns()` (questionary) |
@@ -57,6 +57,7 @@ Console scripts in `pyproject.toml`:
 
 Design points:
 - Files are read with `dtype=str` so zip codes and phone numbers keep leading zeros; output is written with `index=False` in the same format as the suffix. Add a format by adding a suffix to `TABLE_FORMATS`.
+- Suffixes are compared lower-cased (`table_suffix()`), so `.TSV` works. csv/tsv encoding is detected per file (`detect_encoding()`: UTF-16/UTF-8 BOM, strict UTF-8, else cp932); output is UTF-8, with a BOM when the input was not plain UTF-8 (`output_encoding()`), since cp932 cannot hold every Faker value. tsv is read and written with `quoting=csv.QUOTE_NONE` so `"` in values stays as is. Parse/decode failures (and a tab in a tsv value on write) raise `TableIOError`, which `cli` shows with `exit_with_error()`.
 - Fake types are `MASKING` (`"masking"`: every character → `*`, same length) plus the keys of `FAKE_GROUPS` (category → name → generator, flattened into `FAKE_GENERATORS`); add a new type to its category there.
 - `generate` has no original values: `build_type_choices()` / `ask_fake_type()` take `series=None` to drop the `masking` choice and use the `select_generate_type` text. `generate_table()` follows the same name rule as `apply_masks()` (two or more name columns → one `fake_person()` per row) but has no cache, so every row is new. `run_generate()` keeps the samples-before-seed order, so `tests/golden/generated.csv` is produced both by `test_golden.py` and by the CLI E2E test.
 - JSON is output-only (`OUTPUT_FORMATS`, records with `force_ascii=False`); `mask` keeps the same format in and out, so it still accepts only `TABLE_FORMATS`.

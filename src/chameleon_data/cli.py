@@ -20,8 +20,11 @@ from chameleon_data.prompts import (
 from chameleon_data.table_io import (
     ALLOWED_SUFFIXES,
     OUTPUT_SUFFIXES,
+    TableIOError,
+    output_encoding,
     read_header,
     read_table,
+    table_suffix,
     write_table,
 )
 from chameleon_data.ui import (
@@ -160,7 +163,7 @@ def resolve_paths(args: Namespace) -> tuple[Path, Path]:
         output_path = input_path.with_stem(f"{input_path.stem}_masked")
 
     for path in (input_path, output_path):
-        if path.suffix not in ALLOWED_SUFFIXES:
+        if table_suffix(path) not in ALLOWED_SUFFIXES:
             exit_with_error(f"{path.suffix} is not allowed.")
     if not input_path.exists():
         exit_with_error(f"{input_path} is not found.")
@@ -171,16 +174,16 @@ def resolve_generate_paths(args: Namespace) -> tuple[Path | None, Path]:
     template_path = None
     if args.filepath:
         template_path = Path(args.filepath).resolve()
-        if template_path.suffix not in ALLOWED_SUFFIXES:
+        if table_suffix(template_path) not in ALLOWED_SUFFIXES:
             exit_with_error(f"{template_path.suffix} is not allowed.")
         if not template_path.exists():
             exit_with_error(f"{template_path} is not found.")
 
     if args.output:
         output_path = Path(args.output).resolve()
-        if output_path.suffix not in OUTPUT_SUFFIXES:
+        if table_suffix(output_path) not in OUTPUT_SUFFIXES:
             exit_with_error(f"{output_path.suffix} is not allowed.")
-        if args.format and output_path.suffix != f".{args.format}":
+        if args.format and table_suffix(output_path) != f".{args.format}":
             exit_with_error(
                 f"--format {args.format} does not match the output {output_path.name}."
             )
@@ -198,7 +201,10 @@ def run_mask(args: Namespace, app_version: str) -> None:
     input_path, output_path = resolve_paths(args)
 
     with console.status(f"reading {input_path.name} ..."):
-        df = read_table(input_path)
+        try:
+            df = read_table(input_path)
+        except TableIOError as e:
+            exit_with_error(str(e))
     print_input_info(input_path, df)
 
     prompts = get_prompts(args.language)
@@ -230,7 +236,10 @@ def run_mask(args: Namespace, app_version: str) -> None:
         )
 
     with console.status(f"writing {output_path.name} ..."):
-        write_table(df, output_path)
+        try:
+            write_table(df, output_path, output_encoding(input_path))
+        except TableIOError as e:
+            exit_with_error(str(e))
     print_result(output_path, len(df), list(fake_types), time.perf_counter() - started)
 
 
@@ -246,7 +255,10 @@ def run_generate(args: Namespace, app_version: str) -> None:
     if template_path is None:
         fake_types = ask_new_columns(samples, prompts, labels)
     else:
-        columns = read_header(template_path)
+        try:
+            columns = read_header(template_path)
+        except TableIOError as e:
+            exit_with_error(str(e))
         if not columns:
             exit_with_error(f"{template_path.name} has no header row.")
         print_template_info(template_path, columns)
